@@ -75,36 +75,36 @@ def _div_gf2(a, b):
 
 
 class _Element(object):
-    """Element of GF(2^128) field"""
+    """Element of GF(2^256) field"""
 
-    # The irreducible polynomial defining this field is 1+x+x^2+x^7+x^128
-    irr_poly = 1 + 2 + 4 + 128 + 2 ** 128
+    # The irreducible polynomial defining this field is 1+x+x^2+x^7+x^256
+    irr_poly = 1 + 2 + 4 + 256 + 2 ** 256
 
     def __init__(self, encoded_value):
         """Initialize the element to a certain value.
 
         The value passed as parameter is internally encoded as
-        a 128-bit integer, where each bit represents a polynomial
+        a 256-bit integer, where each bit represents a polynomial
         coefficient. The LSB is the constant coefficient.
         """
 
         if is_native_int(encoded_value):
             self._value = encoded_value
-        elif len(encoded_value) == 16:
+        elif len(encoded_value) == 32:
             self._value = bytes_to_long(encoded_value)
         else:
-            raise ValueError("The encoded value must be an integer or a 16 byte string")
+            raise ValueError("The encoded value must be an integer or a 32 byte string")
 
     def __eq__(self, other):
         return self._value == other._value
 
     def __int__(self):
-        """Return the field element, encoded as a 128-bit integer."""
+        """Return the field element, encoded as a 256-bit integer."""
         return self._value
 
     def encode(self):
-        """Return the field element, encoded as a 16 byte string."""
-        return long_to_bytes(self._value, 16)
+        """Return the field element, encoded as a 32 byte string."""
+        return long_to_bytes(self._value, 32)
 
     def __mul__(self, factor):
 
@@ -118,15 +118,15 @@ class _Element(object):
         if self.irr_poly in (f1, f2):
             return _Element(0)
 
-        mask1 = 2 ** 128
+        mask1 = 2 ** 256
         v, z = f1, 0
         while f2:
             # if f2 ^ 1: z ^= v
-            mask2 = int(bin(f2 & 1)[2:] * 128, base=2)
+            mask2 = int(bin(f2 & 1)[2:] * 256, base=2)
             z = (mask2 & (z ^ v)) | ((mask1 - mask2 - 1) & z)
             v <<= 1
             # if v & mask1: v ^= self.irr_poly
-            mask3 = int(bin((v >> 128) & 1)[2:] * 128, base=2)
+            mask3 = int(bin((v >> 256) & 1)[2:] * 256, base=2)
             v = (mask3 & (v ^ self.irr_poly)) | ((mask1 - mask3 - 1) & v)
             f2 >>= 1
         return _Element(z)
@@ -135,7 +135,7 @@ class _Element(object):
         return _Element(self._value ^ term._value)
 
     def inverse(self):
-        """Return the inverse of this element in GF(2^128)."""
+        """Return the inverse of this element in GF(2^256)."""
 
         # We use the Extended GCD algorithm
         # http://en.wikipedia.org/wiki/Polynomial_greatest_common_divisor
@@ -182,7 +182,7 @@ class Shamir(object):
           n (integer):
             The number of shares that this method will create.
           secret (byte string):
-            A byte string of 16 bytes (e.g. the AES 128 key).
+            A byte string of 32 bytes (e.g. the AES 256 key).
           ssss (bool):
             If ``True``, the shares can be used with the ``ssss`` utility.
             Default: ``False``.
@@ -191,18 +191,18 @@ class Shamir(object):
             ``n`` tuples. A tuple is meant for each participant and it contains two items:
 
             1. the unique index (an integer)
-            2. the share (a byte string, 16 bytes)
+            2. the share (a byte string, 32 bytes)
         """
 
         #
-        # We create a polynomial with random coefficients in GF(2^128):
+        # We create a polynomial with random coefficients in GF(2^256):
         #
         # p(x) = \sum_{i=0}^{k-1} c_i * x^i
         #
         # c_0 is the encoded secret
         #
 
-        coeffs = [_Element(rng(16)) for i in range(k - 1)]
+        coeffs = [_Element(rng(32)) for i in range(k - 1)]
         coeffs.append(_Element(secret))
 
         # Each share is y_i = p(x_i) where x_i is the public index
@@ -226,14 +226,14 @@ class Shamir(object):
         Args:
           shares (tuples):
             The *k* tuples, each containin the index (an integer) and
-            the share (a byte string, 16 bytes long) that were assigned to
+            the share (a byte string, 32 bytes long) that were assigned to
             a participant.
           ssss (bool):
             If ``True``, the shares were produced by the ``ssss`` utility.
             Default: ``False``.
 
         Return:
-            The original secret, as a byte string (16 bytes long).
+            The original secret, as a byte string (32 bytes long).
         """
 
         #
